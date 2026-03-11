@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Budget Planner</title>
+  <meta name="theme-color" content="#1e40af">
+  <style>
+    :root{
+      --blue:#1e40af; --blueSoft:#dbeafe; --green:#15803d; --greenSoft:#dcfce7;
+      --red:#b91c1c; --redSoft:#fee2e2; --purple:#7c3aed; --purpleSoft:#ede9fe;
+      --ink:#0f172a; --muted:#64748b; --line:#dbe2ea; --bg:#f8fafc; --card:#fff;
+      --radius:18px; --shadow:0 10px 28px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:"Arial Narrow",Arial,Helvetica,sans-serif;
+      background:linear-gradient(180deg,#eff6ff 0%,var(--bg) 28%);
+      color:var(--ink);
+    }
+    .app{width:min(1100px,calc(100% - 20px));margin:16px auto 36px}
+    .card{
+      background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding:16px;
+    }
+    .hero{
+      display:flex; justify-content:space-between; gap:14px; align-items:end; flex-wrap:wrap;
+      margin-bottom:14px; border-top:6px solid var(--blue);
+    }
+    h1,h2,h3{margin:0 0 8px; font-weight:700}
+    .sub,.footer p,.muted{margin:0; color:var(--muted)}
+    .header-actions,.section-head,.top-tabs{
+      display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    }
+    .instructions{margin-bottom:14px}
+    .instructions ol{margin:8px 0 0 20px; padding:0}
+    .summary-grid{
+      display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:14px;
+    }
+    .summary h3{font-size:1rem; text-transform:uppercase; letter-spacing:.03em}
+    .summary .big{font-size:clamp(1.4rem,2.8vw,2.2rem); font-weight:700}
+    .summary.income{border-top:6px solid var(--green); background:linear-gradient(180deg,#fff,var(--greenSoft))}
+    .summary.expense{border-top:6px solid var(--red); background:linear-gradient(180deg,#fff,var(--redSoft))}
+    .summary.transfer{border-top:6px solid var(--purple); background:linear-gradient(180deg,#fff,var(--purpleSoft))}
+    .summary.remain{border-top:6px solid var(--blue); background:linear-gradient(180deg,#fff,var(--blueSoft))}
+    button,.button-like,select,input{font:inherit}
+    button,.button-like{
+      border:none; background:var(--blue); color:#fff; padding:10px 14px; border-radius:12px;
+      cursor:pointer; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center;
+    }
+    .danger-outline{background:#fff; color:var(--red); border:1px solid #fecaca}
+    .purple-btn{background:var(--purple)}
+    .inline{display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap}
+    select,input{
+      width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:#fff; color:var(--ink);
+    }
+    .row{display:grid; gap:10px; align-items:center; margin-bottom:10px}
+    .money-row{grid-template-columns:1.8fr 1fr auto}
+    .transfer-row{grid-template-columns:1fr 1fr 1fr 1.4fr .8fr auto}
+    .top-tabs{margin-bottom:12px}
+    .tab-btn{background:#e2e8f0; color:var(--ink)}
+    .tab-btn.active{background:var(--blue); color:#fff}
+    .pages{
+      display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:14px; -webkit-overflow-scrolling:touch;
+      scrollbar-width:none;
+    }
+    .pages::-webkit-scrollbar{display:none}
+    .page{
+      min-width:100%; scroll-snap-align:start;
+    }
+    .grid-two{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+    .footer{text-align:center; padding:10px 0}
+    .page-title{display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px}
+    @media (max-width:900px){
+      .summary-grid{grid-template-columns:1fr 1fr}
+      .grid-two{grid-template-columns:1fr}
+      .money-row,.transfer-row{grid-template-columns:1fr}
+    }
+    @media (max-width:620px){
+      .summary-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="hero card">
+    <div>
+      <h1>Monthly Planner</h1>
+      <p class="sub">Swipe between pages for income, expenses, transfers, and summary.</p>
+    </div>
+    <div class="header-actions">
+      <label class="inline"><span>Month</span><select id="monthSelect"></select></label>
+      <button id="newMonthBtn">New Month</button>
+      <button id="deleteMonthBtn" class="danger-outline">Delete Month</button>
+    </div>
+  </header>
+
+  <section class="card instructions">
+    <h2>How to Use This Budget Planner</h2>
+    <ol>
+      <li>Swipe left or right between Income, Expenses, Transfers, and Summary.</li>
+      <li>Planned transfers and overdraft both count as committed money and reduce what is left.</li>
+      <li>Select or create a month at the top to save each month separately.</li>
+      <li>Your data saves automatically on this device.</li>
+      <li>Use Export Backup if you want a copy of all saved months.</li>
+    </ol>
+    <div class="header-actions" style="margin-top:12px">
+      <button id="exportBtn">Export Backup</button>
+      <label>
+        <input type="file" id="importInput" accept="application/json" hidden>
+        <span class="button-like">Import Backup</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="summary-grid">
+    <div class="card summary income"><h3>Total Income</h3><div class="big" id="totalIncome">£0.00</div></div>
+    <div class="card summary expense"><h3>Total Expenses + Overdraft</h3><div class="big" id="totalExpenses">£0.00</div></div>
+    <div class="card summary transfer"><h3>Planned Transfers</h3><div class="big" id="totalTransfers">£0.00</div></div>
+    <div class="card summary remain"><h3>Left After All Outgoings</h3><div class="big" id="remaining">£0.00</div></div>
+  </section>
+
+  <div class="top-tabs">
+    <button class="tab-btn active" data-page="0">Income</button>
+    <button class="tab-btn" data-page="1">Expenses</button>
+    <button class="tab-btn" data-page="2">Transfers</button>
+    <button class="tab-btn" data-page="3">Summary</button>
+  </div>
+
+  <div class="pages" id="pages">
+    <section class="page">
+      <div class="card">
+        <div class="page-title">
+          <div>
+            <h2>Income</h2>
+            <p class="muted">Main income and other income streams.</p>
+          </div>
+        </div>
+        <div class="grid-two">
+          <div>
+            <div class="section-head">
+              <h3>Main Income</h3>
+              <button data-add="mainIncome">Add Row</button>
+            </div>
+            <div id="mainIncomeRows"></div>
+          </div>
+          <div>
+            <div class="section-head">
+              <h3>Other Income Streams</h3>
+              <button data-add="otherIncome">Add Row</button>
+            </div>
+            <div id="otherIncomeRows"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="card">
+        <div class="page-title">
+          <div>
+            <h2>Expenses</h2>
+            <p class="muted">Fixed expenses, ad hoc expenses, and overdraft.</p>
+          </div>
+        </div>
+        <div class="grid-two">
+          <div>
+            <div class="section-head">
+              <h3>Fixed Expenses</h3>
+              <button data-add="fixedExpenses" class="danger-outline">Add Row</button>
+            </div>
+            <div id="fixedExpensesRows"></div>
+          </div>
+          <div>
+            <div class="section-head">
+              <h3>Ad Hoc Expenses</h3>
+              <button data-add="adHocExpenses" class="danger-outline">Add Row</button>
+            </div>
+            <div id="adHocExpensesRows"></div>
+          </div>
+          <div>
+            <div class="section-head">
+              <h3>Overdraft</h3>
+              <button data-add="overdraft" class="danger-outline">Add Row</button>
+            </div>
+            <div id="overdraftRows"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="card">
+        <div class="page-title">
+          <div>
+            <h2>Transfers</h2>
+            <p class="muted">Planned bank transfers count as money already committed.</p>
+          </div>
+        </div>
+        <div class="section-head">
+          <h3>Planned Transfers</h3>
+          <button data-add="transfers" class="purple-btn">Add Row</button>
+        </div>
+        <div id="transfersRows"></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="card">
+        <div class="page-title">
+          <div>
+            <h2>Summary</h2>
+            <p class="muted">Quick view of what is left after expenses, overdraft, and transfers.</p>
+          </div>
+        </div>
+        <div class="grid-two">
+          <div class="card summary income"><h3>Total Income</h3><div class="big" id="totalIncome2">£0.00</div></div>
+          <div class="card summary expense"><h3>Total Expenses + Overdraft</h3><div class="big" id="totalExpenses2">£0.00</div></div>
+          <div class="card summary transfer"><h3>Planned Transfers</h3><div class="big" id="totalTransfers2">£0.00</div></div>
+          <div class="card summary remain"><h3>Left After All Outgoings</h3><div class="big" id="remaining2">£0.00</div></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="footer"><p>Saved locally on this device.</p></footer>
+</div>
+
+<template id="moneyRowTemplate">
+  <div class="row money-row">
+    <input class="desc" placeholder="Description">
+    <input class="amt" type="number" step="0.01" placeholder="Amount">
+    <button class="remove danger-outline" type="button">Remove</button>
+  </div>
+</template>
+
+<template id="transferRowTemplate">
+  <div class="row transfer-row">
+    <input class="date" type="date">
+    <input class="from" placeholder="From Account">
+    <input class="to" placeholder="To Account">
+    <input class="desc" placeholder="Transfer Description">
+    <input class="amt" type="number" step="0.01" placeholder="Amount">
+    <button class="remove danger-outline" type="button">Remove</button>
+  </div>
+</template>
+
+<script>
+const STORAGE_KEY='family-budget-swipe-v1';
+const defaultMonthName=()=>new Date().toLocaleString('en-GB',{month:'long',year:'numeric'});
+const makeMoneyRow=(desc='',amount='')=>({id:crypto.randomUUID(),desc,amount});
+const makeTransferRow=(date='',from='',to='',desc='',amount='')=>({id:crypto.randomUUID(),date,from,to,desc,amount});
+const blankMonth=(name=defaultMonthName())=>({
+  name,
+  mainIncome:[makeMoneyRow()],
+  otherIncome:[makeMoneyRow()],
+  fixedExpenses:[makeMoneyRow()],
+  adHocExpenses:[makeMoneyRow()],
+  overdraft:[makeMoneyRow()],
+  transfers:[makeTransferRow()]
+});
+
+let state=loadState();
+
+function loadState(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw){
+      const first=blankMonth();
+      return {selectedMonth:first.name,months:{[first.name]:first}};
+    }
+    const parsed=JSON.parse(raw);
+    if(!parsed.months||!Object.keys(parsed.months).length) throw new Error();
+    return parsed;
+  }catch{
+    const first=blankMonth();
+    return {selectedMonth:first.name,months:{[first.name]:first}};
+  }
+}
+function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+function currentMonth(){return state.months[state.selectedMonth]}
+function formatMoney(n){return new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(Number(n||0))}
+function numberSum(rows){return rows.reduce((sum,row)=>sum+Number(row.amount||0),0)}
+
+function renderMonthSelect(){
+  const select=document.getElementById('monthSelect');
+  const months=Object.keys(state.months).sort((a,b)=>new Date('1 '+b)-new Date('1 '+a));
+  select.innerHTML=months.map(m=>`<option ${m===state.selectedMonth?'selected':''}>${m}</option>`).join('');
+}
+function totals(){
+  const m=currentMonth();
+  const income=numberSum(m.mainIncome)+numberSum(m.otherIncome);
+  const expenses=numberSum(m.fixedExpenses)+numberSum(m.adHocExpenses)+numberSum(m.overdraft);
+  const transfers=numberSum(m.transfers);
+  const remaining=income-expenses-transfers;
+  return {income,expenses,transfers,remaining};
+}
+function renderSummary(){
+  const t=totals();
+  document.getElementById('totalIncome').textContent=formatMoney(t.income);
+  document.getElementById('totalExpenses').textContent=formatMoney(t.expenses);
+  document.getElementById('totalTransfers').textContent=formatMoney(t.transfers);
+  document.getElementById('remaining').textContent=formatMoney(t.remaining);
+  document.getElementById('totalIncome2').textContent=formatMoney(t.income);
+  document.getElementById('totalExpenses2').textContent=formatMoney(t.expenses);
+  document.getElementById('totalTransfers2').textContent=formatMoney(t.transfers);
+  document.getElementById('remaining2').textContent=formatMoney(t.remaining);
+}
+function rowEl(type,row){
+  const tplId = type==='transfers' ? 'transferRowTemplate' : 'moneyRowTemplate';
+  const node=document.getElementById(tplId).content.firstElementChild.cloneNode(true);
+  node.dataset.id=row.id;
+  if(type==='transfers'){
+    node.querySelector('.date').value=row.date||'';
+    node.querySelector('.from').value=row.from||'';
+    node.querySelector('.to').value=row.to||'';
+    node.querySelector('.desc').value=row.desc||'';
+    node.querySelector('.amt').value=row.amount||'';
+  }else{
+    node.querySelector('.desc').value=row.desc||'';
+    node.querySelector('.amt').value=row.amount||'';
+  }
+  node.querySelector('.remove').addEventListener('click',()=>removeRow(type,row.id));
+  node.addEventListener('input',()=>updateRow(type,node));
+  return node;
+}
+function renderRows(type,targetId){
+  const wrap=document.getElementById(targetId);
+  wrap.innerHTML='';
+  currentMonth()[type].forEach(row=>wrap.appendChild(rowEl(type,row)));
+}
+function renderAll(){
+  renderMonthSelect();
+  renderSummary();
+  renderRows('mainIncome','mainIncomeRows');
+  renderRows('otherIncome','otherIncomeRows');
+  renderRows('fixedExpenses','fixedExpensesRows');
+  renderRows('adHocExpenses','adHocExpensesRows');
+  renderRows('overdraft','overdraftRows');
+  renderRows('transfers','transfersRows');
+}
+function addRow(type){
+  const m=currentMonth();
+  if(type==='transfers') m.transfers.push(makeTransferRow());
+  else m[type].push(makeMoneyRow());
+  saveState(); renderAll();
+}
+function removeRow(type,id){
+  const m=currentMonth();
+  m[type]=m[type].filter(r=>r.id!==id);
+  if(!m[type].length){
+    if(type==='transfers') m[type].push(makeTransferRow());
+    else m[type].push(makeMoneyRow());
+  }
+  saveState(); renderAll();
+}
+function updateRow(type,node){
+  const id=node.dataset.id;
+  const row=currentMonth()[type].find(r=>r.id===id);
+  if(!row) return;
+  if(type==='transfers'){
+    row.date=node.querySelector('.date').value;
+    row.from=node.querySelector('.from').value;
+    row.to=node.querySelector('.to').value;
+    row.desc=node.querySelector('.desc').value;
+    row.amount=node.querySelector('.amt').value;
+  }else{
+    row.desc=node.querySelector('.desc').value;
+    row.amount=node.querySelector('.amt').value;
+  }
+  saveState(); renderSummary();
+}
+function promptNewMonth(){
+  const name=prompt('Enter month name, for example April 2026');
+  if(!name) return;
+  const trimmed=name.trim();
+  if(!trimmed) return;
+  if(!state.months[trimmed]) state.months[trimmed]=blankMonth(trimmed);
+  state.selectedMonth=trimmed;
+  saveState(); renderAll();
+}
+function deleteCurrentMonth(){
+  const names=Object.keys(state.months);
+  if(names.length===1) return alert('You need to keep at least one month.');
+  if(!confirm('Delete ' + state.selectedMonth + '?')) return;
+  delete state.months[state.selectedMonth];
+  state.selectedMonth=Object.keys(state.months)[0];
+  saveState(); renderAll();
+}
+function exportBackup(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='family-budget-backup.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importBackup(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const parsed=JSON.parse(reader.result);
+      if(!parsed.months||!parsed.selectedMonth) throw new Error();
+      state=parsed; saveState(); renderAll(); alert('Backup imported.');
+    }catch{
+      alert('That backup file could not be imported.');
+    }
+  };
+  reader.readAsText(file);
+}
+document.querySelectorAll('[data-add]').forEach(btn=>btn.addEventListener('click',()=>addRow(btn.dataset.add)));
+document.getElementById('monthSelect').addEventListener('change',e=>{state.selectedMonth=e.target.value; saveState(); renderAll();});
+document.getElementById('newMonthBtn').addEventListener('click',promptNewMonth);
+document.getElementById('deleteMonthBtn').addEventListener('click',deleteCurrentMonth);
+document.getElementById('exportBtn').addEventListener('click',exportBackup);
+document.getElementById('importInput').addEventListener('change',e=>{if(e.target.files&&e.target.files[0]) importBackup(e.target.files[0]);});
+
+const pages=document.getElementById('pages');
+const tabButtons=[...document.querySelectorAll('.tab-btn')];
+tabButtons.forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const page=Number(btn.dataset.page);
+    pages.scrollTo({left:pages.clientWidth*page,behavior:'smooth'});
+  });
+});
+function syncTabs(){
+  const page=Math.round(pages.scrollLeft/pages.clientWidth);
+  tabButtons.forEach((btn,i)=>btn.classList.toggle('active',i===page));
+}
+pages.addEventListener('scroll',()=>requestAnimationFrame(syncTabs));
+
+renderAll();
+syncTabs();
+</script>
+</body>
+</html>
