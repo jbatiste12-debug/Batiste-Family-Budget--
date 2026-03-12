@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Budget Planner</title>
+
+<style>
+
+body{
+font-family:-apple-system,BlinkMacSystemFont;
+background:#0b0f1a;
+color:white;
+margin:0;
+padding:20px;
+}
+
+h1{
+font-size:28px;
+margin-bottom:10px;
+}
+
+.card{
+background:#141a2e;
+padding:20px;
+border-radius:16px;
+margin-bottom:15px;
+box-shadow:0 10px 25px rgba(0,0,0,.4);
+}
+
+.summary{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+}
+
+.stat{
+background:#1c2340;
+padding:15px;
+border-radius:12px;
+text-align:center;
+}
+
+.big{
+font-size:22px;
+font-weight:bold;
+margin-top:5px;
+}
+
+.tabs button{
+background:#1c2340;
+border:none;
+color:white;
+padding:10px 15px;
+border-radius:20px;
+margin-right:5px;
+font-weight:bold;
+}
+
+.tabs button.active{
+background:#4f7cff;
+}
+
+.row{
+display:grid;
+grid-template-columns:1fr 1fr 1fr auto;
+gap:6px;
+margin-bottom:8px;
+}
+
+input{
+padding:8px;
+border-radius:8px;
+border:none;
+background:#0e1428;
+color:white;
+}
+
+button{
+cursor:pointer;
+}
+
+.remove{
+background:#ef4444;
+border:none;
+color:white;
+border-radius:8px;
+padding:6px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Family Budget</h1>
+
+<div class="summary">
+
+<div class="stat">
+Income
+<div class="big" id="incomeTotal">£0</div>
+</div>
+
+<div class="stat">
+Expenses
+<div class="big" id="expenseTotal">£0</div>
+</div>
+
+<div class="stat">
+Transfers
+<div class="big" id="transferTotal">£0</div>
+</div>
+
+<div class="stat">
+Remaining
+<div class="big" id="remainingTotal">£0</div>
+</div>
+
+</div>
+
+<div class="tabs">
+<button class="active" onclick="tab('income')">Income</button>
+<button onclick="tab('expenses')">Expenses</button>
+<button onclick="tab('transfers')">Transfers</button>
+</div>
+
+<div id="incomeTab"></div>
+<div id="expensesTab" style="display:none"></div>
+<div id="transfersTab" style="display:none"></div>
+
+<button onclick="add('income')">Add Income</button>
+<button onclick="add('expenses')">Add Expense</button>
+<button onclick="add('transfers')">Add Transfer</button>
+
+<script>
+
+let data={income:[],expenses:[],transfers:[]}
+
+function tab(t){
+
+incomeTab.style.display="none"
+expensesTab.style.display="none"
+transfersTab.style.display="none"
+
+document.getElementById(t+"Tab").style.display="block"
+
+}
+
+function add(type){
+
+data[type].push({desc:"",date:"",amount:0})
+render()
+
+}
+
+function render(){
+
+["income","expenses","transfers"].forEach(type=>{
+
+let el=document.getElementById(type+"Tab")
+
+el.innerHTML=""
+
+data[type].forEach((r,i)=>{
+
+let row=document.createElement("div")
+
+row.className="row"
+
+row.innerHTML=`
+
+<input placeholder="Description" value="${r.desc}" onchange="update('${type}',${i},'desc',this.value)">
+<input type="date" value="${r.date}" onchange="update('${type}',${i},'date',this.value)">
+<input type="number" value="${r.amount}" onchange="update('${type}',${i},'amount',this.value)">
+<button class="remove" onclick="removeRow('${type}',${i})">X</button>
+
+`
+
+el.appendChild(row)
+
+})
+
+})
+
+totals()
+
+}
+
+function update(t,i,k,v){
+
+data[t][i][k]=v
+totals()
+
+}
+
+function removeRow(t,i){
+
+data[t].splice(i,1)
+render()
+
+}
+
+function totals(){
+
+let income=data.income.reduce((a,b)=>a+Number(b.amount||0),0)
+let expenses=data.expenses.reduce((a,b)=>a+Number(b.amount||0),0)
+let transfers=data.transfers.reduce((a,b)=>a+Number(b.amount||0),0)
+
+let remaining=income-expenses-transfers
+
+incomeTotal.innerText="£"+income
+expenseTotal.innerText="£"+expenses
+transferTotal.innerText="£"+transfers
+remainingTotal.innerText="£"+remaining
+
+}
+
+render()
+
+</script>
+
+</body>
+</html>
