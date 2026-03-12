@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Budget Planner Pro</title>
+<style>
+body{font-family:Arial;background:#f4f7fb;margin:0;padding:20px}
+.card{background:white;padding:20px;border-radius:12px;margin-bottom:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1)}
+.tabs button{padding:10px;margin-right:5px;border:none;background:#ddd;border-radius:6px;font-weight:bold}
+.tabs button.active{background:#1e40af;color:white}
+.row{display:grid;grid-template-columns:1.5fr 1fr 1fr auto;gap:6px;margin-bottom:8px}
+input{padding:8px;border-radius:6px;border:1px solid #ccc}
+button{cursor:pointer}
+.remove{background:#dc2626;color:white;border:none;border-radius:6px;padding:6px}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.summary div{background:white;padding:15px;border-radius:10px;text-align:center}
+.big{font-size:22px;font-weight:bold;margin-top:6px}
+</style>
+</head>
+
+<body>
+
+<h1>Family Budget Planner</h1>
+
+<div class="summary">
+<div>Income<div class="big" id="incomeTotal">£0</div></div>
+<div>Expenses<div class="big" id="expenseTotal">£0</div></div>
+<div>Transfers<div class="big" id="transferTotal">£0</div></div>
+<div>Remaining<div class="big" id="remainingTotal">£0</div></div>
+</div>
+
+<div class="tabs">
+<button class="active" onclick="switchTab('income')">Income</button>
+<button onclick="switchTab('expenses')">Expenses</button>
+<button onclick="switchTab('transfers')">Transfers</button>
+</div>
+
+<div id="incomeTab" class="card"></div>
+<div id="expensesTab" class="card" style="display:none"></div>
+<div id="transfersTab" class="card" style="display:none"></div>
+
+<button onclick="addRow('income')">Add Income</button>
+<button onclick="addRow('expenses')">Add Expense</button>
+<button onclick="addRow('transfers')">Add Transfer</button>
+
+<script>
+
+let data={income:[],expenses:[],transfers:[]}
+
+function switchTab(tab){
+document.getElementById("incomeTab").style.display="none"
+document.getElementById("expensesTab").style.display="none"
+document.getElementById("transfersTab").style.display="none"
+document.getElementById(tab+"Tab").style.display="block"
+}
+
+function addRow(type){
+data[type].push({desc:"",date:"",amount:0})
+render()
+}
+
+function render(){
+["income","expenses","transfers"].forEach(type=>{
+let container=document.getElementById(type+"Tab")
+container.innerHTML=""
+data[type].forEach((r,i)=>{
+let row=document.createElement("div")
+row.className="row"
+row.innerHTML=`
+<input placeholder="Description" value="${r.desc}" onchange="update('${type}',${i},'desc',this.value)">
+<input type="date" value="${r.date}" onchange="update('${type}',${i},'date',this.value)">
+<input type="number" value="${r.amount}" onchange="update('${type}',${i},'amount',this.value)">
+<button class="remove" onclick="removeRow('${type}',${i})">X</button>
+`
+container.appendChild(row)
+})
+})
+updateTotals()
+}
+
+function update(type,i,key,val){
+data[type][i][key]=val
+updateTotals()
+}
+
+function removeRow(type,i){
+data[type].splice(i,1)
+render()
+}
+
+function updateTotals(){
+let income=data.income.reduce((a,b)=>a+Number(b.amount||0),0)
+let expenses=data.expenses.reduce((a,b)=>a+Number(b.amount||0),0)
+let transfers=data.transfers.reduce((a,b)=>a+Number(b.amount||0),0)
+let remaining=income-expenses-transfers
+
+document.getElementById("incomeTotal").innerText="£"+income
+document.getElementById("expenseTotal").innerText="£"+expenses
+document.getElementById("transferTotal").innerText="£"+transfers
+document.getElementById("remainingTotal").innerText="£"+remaining
+}
+
+render()
+
+</script>
+
+</body>
+</html>
